@@ -1,0 +1,45 @@
+name: kernel
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y bc bison build-essential flex libssl-dev
+      - name: Fetch Lineage GCC 4.9
+        run: |
+          git clone --depth=1 --branch lineage-18.1 \
+            https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git toolchain
+          mkdir toolchain-prefix
+          for tool in toolchain/bin/aarch64-linux-android-*; do
+            ln -s "$(pwd)/$tool" "toolchain-prefix/$(basename "$tool")"
+          done
+          ln -sf "$(pwd)/toolchain/bin/real-aarch64-linux-android-gcc" \
+            toolchain-prefix/aarch64-linux-android-gcc
+      - name: Prepare and build kernel
+        run: |
+          ./scripts/fetch-kernel.sh
+          CROSS_COMPILE="$(pwd)/toolchain-prefix/aarch64-linux-android-" \
+            ./scripts/build-kernel.sh
+      - name: Verify config
+        run: ./scripts/verify-config.sh out/kernel/.config
+      - name: Build DTBH and halium-boot
+        run: |
+          ./scripts/build-dt-image.sh
+          cp out/prebuilt_dt_dream2lte.img prebuilt_dt_dream2lte.img
+          ./scripts/build-halium-boot.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dream2lte-bringup
+          path: |
+            out/kernel/arch/arm64/boot/Image
+            out/kernel/arch/arm64/boot/dts/exynos/exynos8895-dream2lte_*.dtb
+            out/prebuilt_dt_dream2lte.img
+            out/halium-boot-dream2lte.img
+            out/kernel/.config
