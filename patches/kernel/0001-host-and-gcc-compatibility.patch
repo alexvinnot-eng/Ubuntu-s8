@@ -1,0 +1,100 @@
+diff --git a/drivers/misc/modem_v1/link_device_memory_flow_control.c b/drivers/misc/modem_v1/link_device_memory_flow_control.c
+index f26cbf15..e9fb2ab0 100644
+--- a/drivers/misc/modem_v1/link_device_memory_flow_control.c
++++ b/drivers/misc/modem_v1/link_device_memory_flow_control.c
+@@ -120,4 +120,4 @@ int sbd_check_tx_flow_ctrl(struct sbd_ring_buffer *rb)
+ void txq_stop(struct mem_link_device *mld, struct mem_ipc_device *dev)
+ {
+-	if (dev->id == IPC_RAW && atomic_read(&dev->txq.busy) == 0) {
++	if ((int)dev->id == (int)IPC_RAW && atomic_read(&dev->txq.busy) == 0) {
+ 		struct link_device *ld = &mld->link_dev;
+@@ -162,4 +162,4 @@ void tx_flowctrl_suspend(struct mem_link_device *mld)
+ void txq_start(struct mem_link_device *mld, struct mem_ipc_device *dev)
+ {
+-	if (dev->id == IPC_RAW && atomic_read(&dev->txq.busy) > 0) {
++	if ((int)dev->id == (int)IPC_RAW && atomic_read(&dev->txq.busy) > 0) {
+ 		struct link_device *ld = &mld->link_dev;
+diff --git a/scripts/dtc/dtc-lexer.l b/scripts/dtc/dtc-lexer.l
+index 0ee1caf0..a9b58b71 100644
+--- a/scripts/dtc/dtc-lexer.l
++++ b/scripts/dtc/dtc-lexer.l
+@@ -38,5 +38,4 @@ LINECOMMENT\t"//".*\n
+ #include "srcpos.h"
+ #include "dtc-parser.tab.h"
+ 
+-YYLTYPE yylloc;
+ extern bool treesource_error;
+diff --git a/drivers/video/fbdev/exynos/dpu/displayport_drv.c b/drivers/video/fbdev/exynos/dpu/displayport_drv.c
+index df5ee502..ca36be01 100644
+--- a/drivers/video/fbdev/exynos/dpu/displayport_drv.c
++++ b/drivers/video/fbdev/exynos/dpu/displayport_drv.c
+@@ -182,11 +182,9 @@ static int displayport_full_link_training(void)
+ 	u8 enhanced_frame_cap;
+ 	int ret = 0;
+ 	int tps3_supported = 0;
++	unsigned long training_delay_us;
+ 	struct displayport_device *displayport = get_displayport_drvdata();
+ 
+-	//dipshit
+-	long dipshit = (training_aux_rd_interval*4000)+400;
+-
+ 	displayport_reg_dpcd_read_burst(DPCD_ADD_REVISION_NUMBER, DPCD_BUF_SIZE, val);
+ 	displayport_info("Full Link Training Start + : %02x %02x\n", val[1], val[2]);
+ 
+@@ -214,6 +212,7 @@ static int displayport_full_link_training(void)
+ 
+ 	displayport_reg_dpcd_read(DPCD_ADD_TRAINING_AUX_RD_INTERVAL, 1, val);
+ 	training_aux_rd_interval = val[0];
++	training_delay_us = (training_aux_rd_interval * 4000) + 400;
+ 
+ Reduce_Link_Rate_Retry:
+ 	displayport_info("Reduce_Link_Rate_Retry(0x%X)\n", link_rate);
+@@ -432,7 +431,7 @@ EQ_Training_Retry:
+ 	lane_symbol_locked_done = 0;
+ 	interlane_align_done = 0;
+ 
+-	usleep_range(dipshit, dipshit+100);
++	usleep_range(training_delay_us, training_delay_us + 100);
+ 
+ 	displayport_reg_dpcd_read_burst(DPCD_ADD_LANE0_1_STATUS, 3, val);
+ 	lane_cr_done |= ((val[0] & LANE0_CR_DONE) >> 0);
+diff --git a/drivers/video/fbdev/exynos/dpu/decon_reg.c b/drivers/video/fbdev/exynos/dpu/decon_reg.c
+index 589d79f8..796cdde9 100644
+--- a/drivers/video/fbdev/exynos/dpu/decon_reg.c
++++ b/drivers/video/fbdev/exynos/dpu/decon_reg.c
+@@ -2588,12 +2588,12 @@ u32 decon_reg_get_height(u32 id, int dsi_mode)
+ 	return (FORMATTER_HEIGHT_GET(val));
+ }
+ 
+-const double decon_clocks_table[][CLK_ID_MAX] = {
++const unsigned long decon_clocks_table[][CLK_ID_MAX] = {
+ 	/* VCLK,  ECLK,  ACLK,  PCLK,  DISP_PLL,  resolution,            MIC_ratio, DSC count */
+ 	{    71,   168,   400,    66,        71, 1080 * 1920,     MIC_COMP_BYPASS,         0},
+ 	{    63,   168,   400,    66,        63, 1440 * 2560,  MIC_COMP_RATIO_1_2,         0},
+-	{  41.7, 137.5,   400,    66,      62.5, 1440 * 2560,  MIC_COMP_RATIO_1_3,         0},
+-	{   141, 137.5,   400,    66,       141, 1440 * 2560,     MIC_COMP_BYPASS,         0},
++	{    41,   137,   400,    66,        62, 1440 * 2560,  MIC_COMP_RATIO_1_3,         0},
++	{   141,   137,   400,    66,       141, 1440 * 2560,     MIC_COMP_BYPASS,         0},
+ 	{    42,   337,   400,    66,        42, 1440 * 2560,     MIC_COMP_BYPASS,         1},
+ 	{    42,   168,   400,    66,        42, 1440 * 2560,     MIC_COMP_BYPASS,         2},
+ };
+diff --git a/Makefile b/Makefile
+index 57f89c47..78b36ddb 100755
+--- a/Makefile
++++ b/Makefile
+@@ -405,4 +405,5 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+ 		   -Werror-implicit-function-declaration \
+ 		   -Wno-format-security \
+ 		   -Werror \
++		   -Wno-error=enum-compare \
+ 		   -std=gnu89 $(call cc-option,-fno-PIE)
+diff --git a/scripts/dtc/dtc-lexer.lex.c_shipped b/scripts/dtc/dtc-lexer.lex.c_shipped
+index 11cd78e7..4263fc86 100644
+--- a/scripts/dtc/dtc-lexer.lex.c_shipped
++++ b/scripts/dtc/dtc-lexer.lex.c_shipped
+@@ -637,5 +637,4 @@ char *yytext;
+ #include "srcpos.h"
+ #include "dtc-parser.tab.h"
+ 
+-YYLTYPE yylloc;
+ extern bool treesource_error;
