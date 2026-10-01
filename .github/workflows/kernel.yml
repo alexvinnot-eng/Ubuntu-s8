@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Restore executable script permissions
+        run: chmod +x scripts/*.sh
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y bc bison build-essential flex libssl-dev
       - name: Fetch Lineage GCC 4.9
