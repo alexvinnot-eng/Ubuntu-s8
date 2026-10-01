@@ -1,0 +1,5 @@
+/out/
+/work/
+/prebuilt_dt_dream2lte.img
+__pycache__/
+*.pyc
