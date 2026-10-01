@@ -1,0 +1,77 @@
+#!/sbin/sh
+set -eu
+
+OUTFD="$2"
+ZIPFILE="$3"
+WORKDIR="/tmp/ut-dream2lte-installer"
+BOOT_IMAGE="$WORKDIR/boot.img"
+MAX_BOOT_SIZE=41943040
+
+ui_print() {
+    echo "ui_print $*" > "/proc/self/fd/$OUTFD"
+    echo "ui_print" > "/proc/self/fd/$OUTFD"
+}
+
+abort_install() {
+    ui_print "ERROR: $*"
+    exit 1
+}
+
+prop() {
+    getprop "$1" 2>/dev/null || true
+}
+
+MODEL="$(prop ro.product.model)"
+VENDOR_MODEL="$(prop ro.product.vendor.model)"
+BOOTLOADER="$(prop ro.bootloader)"
+DEVICE="$(prop ro.product.device)"
+IDENTITY="$MODEL $VENDOR_MODEL $BOOTLOADER $DEVICE"
+
+ui_print "Ubuntu Touch diagnostic boot installer"
+ui_print "Target: Samsung Galaxy S8+ Exynos SM-G955F"
+ui_print "Detected: model=$MODEL device=$DEVICE bootloader=$BOOTLOADER"
+
+case "$IDENTITY" in
+    *SM-G955F*|*G955F*) ;;
+    *) abort_install "Device is not positively identified as SM-G955F; nothing was flashed." ;;
+esac
+
+BOOT_BLOCK=""
+for candidate in \
+    /dev/block/by-name/BOOT \
+    /dev/block/bootdevice/by-name/BOOT \
+    /dev/block/platform/*/by-name/BOOT
+do
+    if [ -b "$candidate" ]; then
+        BOOT_BLOCK="$candidate"
+        break
+    fi
+done
+[ -n "$BOOT_BLOCK" ] || abort_install "BOOT partition was not found; nothing was flashed."
+
+rm -rf "$WORKDIR"
+mkdir -p "$WORKDIR"
+unzip -o "$ZIPFILE" boot.img boot.img.sha256 -d "$WORKDIR" >/dev/null \
+    || abort_install "Could not extract boot.img; nothing was flashed."
+[ -s "$BOOT_IMAGE" ] || abort_install "boot.img is missing or empty; nothing was flashed."
+
+BOOT_SIZE="$(wc -c < "$BOOT_IMAGE" | tr -d ' ')"
+[ "$BOOT_SIZE" -le "$MAX_BOOT_SIZE" ] \
+    || abort_install "boot.img exceeds the 40 MiB BOOT partition; nothing was flashed."
+
+if command -v sha256sum >/dev/null 2>&1; then
+    EXPECTED="$(awk '{print $1}' "$WORKDIR/boot.img.sha256")"
+    ACTUAL="$(sha256sum "$BOOT_IMAGE" | awk '{print $1}')"
+    [ "$EXPECTED" = "$ACTUAL" ] \
+        || abort_install "boot.img checksum mismatch; nothing was flashed."
+else
+    ui_print "WARNING: sha256sum unavailable in recovery; checksum check skipped."
+fi
+
+ui_print "Flashing boot.img to $BOOT_BLOCK"
+dd if="$BOOT_IMAGE" of="$BOOT_BLOCK" bs=4096 \
+    || abort_install "Writing BOOT failed. Restore the TWRP boot backup."
+sync
+ui_print "Boot image installed successfully."
+ui_print "This is a diagnostic Halium image, not a daily-use Ubuntu Touch ROM."
+exit 0

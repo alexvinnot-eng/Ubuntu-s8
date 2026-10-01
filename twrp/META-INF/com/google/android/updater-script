@@ -1,0 +1,2 @@
+# Installation is implemented by update-binary for TWRP compatibility.
+# The installer writes only the BOOT partition after an SM-G955F identity check.
