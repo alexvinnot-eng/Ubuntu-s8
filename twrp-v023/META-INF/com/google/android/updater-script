@@ -1,0 +1,2 @@
+# Installation is implemented by update-binary for TWRP compatibility.
+# v0.2.3 writes only BOOT and preserves /data/ubuntu.img.
