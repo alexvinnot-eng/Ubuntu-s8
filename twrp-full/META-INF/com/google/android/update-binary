@@ -28,7 +28,7 @@ BOOTLOADER="$(prop ro.bootloader)"
 DEVICE="$(prop ro.product.device)"
 IDENTITY="$MODEL $VENDOR_MODEL $BOOTLOADER $DEVICE"
 
-ui_print "Ubuntu Touch 20.04 bring-up installer v0.2.1"
+ui_print "Ubuntu Touch 20.04 bring-up installer v0.2.2"
 ui_print "Target: Samsung Galaxy S8+ Exynos SM-G955F"
 ui_print "Detected: model=$MODEL device=$DEVICE bootloader=$BOOTLOADER"
 
@@ -82,7 +82,10 @@ esac
 [ -s "$WORKDIR/ubuntu.img.parts" ] \
     || abort_install "ubuntu.img parts manifest is missing; nothing was flashed."
 
-FREE_KB="$(df -k /data | awk 'NR==2 {print $4}')"
+FREE_KB="$(df -k /data 2>/dev/null | tail -n 1 | awk '{print $(NF-2)}')"
+case "$FREE_KB" in
+    ''|*[!0-9]*) abort_install "Could not determine free space on userdata; nothing was flashed." ;;
+esac
 NEEDED_KB="$((ROOTFS_KB + 131072))"
 [ -n "$FREE_KB" ] && [ "$FREE_KB" -ge "$NEEDED_KB" ] \
     || abort_install "At least 4 GB of free space on userdata is required."
