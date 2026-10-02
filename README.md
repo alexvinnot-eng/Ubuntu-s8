@@ -36,8 +36,9 @@ especially display/HWC, Wi-Fi, vibrator, dual-SIM and modem changes.
   package while retaining the ext4 UID/GID and mode metadata.
 - Hardware logs from SM-G955F confirm that the Lineage kernel, DT and Halium
   initramfs boot and mount userdata successfully.
-- The first full-rootfs TWRP build is documented in `docs/V0.2.0.md`; its
-  Linux-to-Lomiri handoff still requires device testing.
+- The original v0.2.0 installer exposed a signed 32-bit size overflow in the
+  TWRP unzip implementation before anything was flashed. The chunked v0.2.1
+  installer and its compatibility fix are documented in `docs/V0.2.1.md`.
 - No build is declared safe for daily use yet.
 
 ## Kernel build
@@ -95,7 +96,7 @@ cp manifests/dream2lte.xml .repo/local_manifests/
 repo sync -c -j8
 ```
 
-The next milestone is the first hardware boot of the v0.2.0 full-rootfs image,
+The next milestone is the first hardware boot of the v0.2.1 full-rootfs image,
 followed by USB/ADB collection and Lomiri/HWC diagnosis on the exact Exynos
 model.
 

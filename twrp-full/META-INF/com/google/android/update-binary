@@ -28,7 +28,7 @@ BOOTLOADER="$(prop ro.bootloader)"
 DEVICE="$(prop ro.product.device)"
 IDENTITY="$MODEL $VENDOR_MODEL $BOOTLOADER $DEVICE"
 
-ui_print "Ubuntu Touch 20.04 bring-up installer v0.2.0"
+ui_print "Ubuntu Touch 20.04 bring-up installer v0.2.1"
 ui_print "Target: Samsung Galaxy S8+ Exynos SM-G955F"
 ui_print "Detected: model=$MODEL device=$DEVICE bootloader=$BOOTLOADER"
 
@@ -58,7 +58,7 @@ fi
 command -v sha256sum >/dev/null 2>&1 || abort_install "sha256sum is required by this installer."
 
 mkdir -p "$WORKDIR"
-unzip -o "$ZIPFILE" boot.img boot.img.sha256 ubuntu.img.sha256 -d "$WORKDIR" >/dev/null \
+unzip -o "$ZIPFILE" boot.img boot.img.sha256 ubuntu.img.sha256 ubuntu.img.size-kb ubuntu.img.parts -d "$WORKDIR" >/dev/null \
     || abort_install "Could not extract installer metadata; nothing was flashed."
 
 BOOT_IMAGE="$WORKDIR/boot.img"
@@ -73,19 +73,37 @@ BOOT_ACTUAL="$(sha256sum "$BOOT_IMAGE" | awk '{print $1}')"
     || abort_install "boot.img checksum mismatch; nothing was flashed."
 
 ROOTFS_EXPECTED="$(awk '{print $1}' "$WORKDIR/ubuntu.img.sha256")"
-ROOTFS_SIZE="$(unzip -l "$ZIPFILE" ubuntu.img | awk '/ubuntu.img$/ {print $1; exit}')"
-[ -n "$ROOTFS_SIZE" ] && [ "$ROOTFS_SIZE" -gt 0 ] \
-    || abort_install "ubuntu.img is missing or has an invalid size; nothing was flashed."
+ROOTFS_KB="$(tr -d '[:space:]' < "$WORKDIR/ubuntu.img.size-kb")"
+case "$ROOTFS_KB" in
+    ''|*[!0-9]*) abort_install "ubuntu.img size metadata is invalid; nothing was flashed." ;;
+esac
+[ "$ROOTFS_KB" -gt 0 ] \
+    || abort_install "ubuntu.img size metadata is invalid; nothing was flashed."
+[ -s "$WORKDIR/ubuntu.img.parts" ] \
+    || abort_install "ubuntu.img parts manifest is missing; nothing was flashed."
 
 FREE_KB="$(df -k /data | awk 'NR==2 {print $4}')"
-NEEDED_KB="$((ROOTFS_SIZE / 1024 + 131072))"
+NEEDED_KB="$((ROOTFS_KB + 131072))"
 [ -n "$FREE_KB" ] && [ "$FREE_KB" -ge "$NEEDED_KB" ] \
     || abort_install "At least 4 GB of free space on userdata is required."
 
 ui_print "Installing Ubuntu Touch rootfs to /data/ubuntu.img"
 rm -f "$ROOTFS_TMP"
-unzip -p "$ZIPFILE" ubuntu.img > "$ROOTFS_TMP" \
-    || { rm -f "$ROOTFS_TMP"; abort_install "Could not extract ubuntu.img; BOOT was not changed."; }
+: > "$ROOTFS_TMP"
+PART_COUNT=0
+while IFS= read -r PART_NAME; do
+    [ -n "$PART_NAME" ] || continue
+    case "$PART_NAME" in
+        ubuntu.img.part[0-9][0-9]) ;;
+        *) rm -f "$ROOTFS_TMP"; abort_install "Invalid ubuntu.img part name; BOOT was not changed." ;;
+    esac
+    ui_print "Extracting $PART_NAME"
+    unzip -p "$ZIPFILE" "$PART_NAME" >> "$ROOTFS_TMP" \
+        || { rm -f "$ROOTFS_TMP"; abort_install "Could not extract $PART_NAME; BOOT was not changed."; }
+    PART_COUNT="$((PART_COUNT + 1))"
+done < "$WORKDIR/ubuntu.img.parts"
+[ "$PART_COUNT" -gt 0 ] \
+    || { rm -f "$ROOTFS_TMP"; abort_install "No ubuntu.img parts were extracted; BOOT was not changed."; }
 
 ROOTFS_ACTUAL="$(sha256sum "$ROOTFS_TMP" | awk '{print $1}')"
 [ "$ROOTFS_EXPECTED" = "$ROOTFS_ACTUAL" ] \
