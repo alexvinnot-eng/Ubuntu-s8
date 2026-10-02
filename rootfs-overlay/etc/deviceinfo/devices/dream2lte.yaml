@@ -1,0 +1,9 @@
+dream2lte:
+  PrettyName: Samsung Galaxy S8+ Exynos
+  DeviceType: phone
+  GridUnit: 31
+  PrimaryOrientation: Portrait
+  SupportedOrientations:
+    - Portrait
+    - Landscape
+    - InvertedLandscape

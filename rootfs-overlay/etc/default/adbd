@@ -1,0 +1,2 @@
+# Disable ADB host-key verification during the initial hardware bring-up.
+ADBD_SECURE=0

@@ -34,7 +34,11 @@ especially display/HWC, Wi-Fi, vibrator, dual-SIM and modem changes.
   are built and structurally checked.
 - A deterministic `vendor.img` can be produced from the pinned LineageOS 18.1
   package while retaining the ext4 UID/GID and mode metadata.
-- No image has been tested on hardware or declared safe for daily use yet.
+- Hardware logs from SM-G955F confirm that the Lineage kernel, DT and Halium
+  initramfs boot and mount userdata successfully.
+- The first full-rootfs TWRP build is documented in `docs/V0.2.0.md`; its
+  Linux-to-Lomiri handoff still requires device testing.
+- No build is declared safe for daily use yet.
 
 ## Kernel build
 
@@ -91,9 +95,9 @@ cp manifests/dream2lte.xml .repo/local_manifests/
 repo sync -c -j8
 ```
 
-The next milestone is a non-destructive hardware boot test with functioning USB
-networking and a diagnostic shell. Rootfs/system-image integration follows
-only after that boot milestone is confirmed on the exact Exynos model.
+The next milestone is the first hardware boot of the v0.2.0 full-rootfs image,
+followed by USB/ADB collection and Lomiri/HWC diagnosis on the exact Exynos
+model.
 
 ## Layout
 
