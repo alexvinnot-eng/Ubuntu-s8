@@ -1,4 +1,4 @@
-# Ubuntu Touch bring-up for Samsung Galaxy S8+ Exynos
+> **Experimental Halium 9 track (2026-10-19):** this branch records the later LineageOS 16 / Halium 9 v0.5.8 handoff and diagnostics. See [docs/HALIUM9_V058_STATUS.md](docs/HALIUM9_V058_STATUS.md) and [scripts/triage-v058.py](scripts/triage-v058.py). **No confirmed Ubuntu Touch UI boot.** The original README below describes the **historical Halium 11** project, and its verification results must not be attributed to v0.5.8.\n\n# Ubuntu Touch bring-up for Samsung Galaxy S8+ Exynos
 
 Reproducible first-stage porting workspace for `dream2lte`, based on Halium 11
 and the LineageOS 18.1 device/kernel trees.
